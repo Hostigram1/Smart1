@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Shift AI - Intelligent personalhantering för restauranger</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #da291c 0%, #8b0000 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 25px 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #da291c;
+            font-size: 32px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header h1 span {
+            background: #ffbc0d;
+            color: #da291c;
+            font-size: 14px;
+            padding: 5px 12px;
+            border-radius: 20px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-top: 8px;
+        }
+        
+        .day-selector {
+            background: white;
+            border-radius: 15px;
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .day-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            background: #f0f0f0;
+        }
+        
+        .day-btn.active {
+            background: #da291c;
+            color: white;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+        
+        .stat-card h3 {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .stat-unit {
+            font-size: 14px;
+            color: #999;
+        }
+        
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+        
+        @media (max-width: 900px) {
+            .two-columns {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .forecast-table {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+        
+        .forecast-table h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background: #f8f8f8;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .peak-badge {
+            background: #ff4757;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .ai-assistant {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+        
+        .ai-assistant h3 {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .ai-message {
+            background: rgba(255,255,255,0.15);
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 10px;
+            line-height: 1.6;
+        }
+        
+        .alerts {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 25px;
+        }
+        
+        .alert-item {
+            background: #fff3e0;
+            border-left: 4px solid #ffa502;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+        }
+        
+        .alert-item.warning {
+            background: #ffe0e0;
+            border-left-color: #da291c;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: rgba(255,255,255,0.8);
+            font-size: 12px;
+        }
+        
+        .staff-numbers {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 5px;
+            justify-content: center;
+        }
+        
+        .staff-badge {
+            background: #e0e0e0;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        
+        .staff-detail {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                🍔 Smart Shift AI 
+                <span>BETA</span>
+            </h1>
+            <p class="subtitle">Intelligent system för personalplanering och driftsoptimering</p>
+            <p style="color: #da291c; font-size: 13px; margin-top: 10px;">📍 McDonald's - AI-driven personalhantering</p>
+        </div>
+        
+        <div class="day-selector" id="daySelector">
+            <button class="day-btn active" data-day="Mon">Måndag</button>
+            <button class="day-btn" data-day="Tue">Tisdag</button>
+            <button class="day-btn" data-day="Wed">Onsdag</button>
+            <button class="day-btn" data-day="Thu">Torsdag</button>
+            <button class="day-btn" data-day="Fri">Fredag</button>
+            <button class="day-btn" data-day="Sat">Lördag</button>
+            <button class="day-btn" data-day="Sun">Söndag</button>
+        </div>
+        
+        <div class="stats-grid" id="statsCards">
+            <div class="stat-card">
+                <h3>📊 Förväntade beställningar</h3>
+                <div class="stat-value" id="totalOrders">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>👥 Rekommenderad personal</h3>
+                <div class="stat-value" id="totalStaff">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>⏰ Rusningstider</h3>
+                <div class="stat-value" id="peakHours" style="font-size: 24px;">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>📈 Förväntad effektivitet</h3>
+                <div class="stat-value" id="efficiency">0<span class="stat-unit">%</span></div>
+            </div>
+        </div>
+        
+        <div class="two-columns">
+            <div class="forecast-table">
+                <h3>📈 Prognos per timme</h3>
+                <div style="overflow-x: auto;">
+                    <table id="forecastTable">
+                        <thead>
+                            <tr><th>Timme</th><th>Beställningar</th><th>Personal</th><th>Status</th></tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="ai-assistant">
+                <h3>🤖 Smart Shift AI Assistant</h3>
+                <div class="ai-message" id="aiMessage">
+                    Analyserar data...
+                </div>
+                <div style="margin-top: 15px; font-size: 13px; opacity: 0.8;">
+                    ⚡ Realtidsrekommendationer baserade på AI
+                </div>
+            </div>
+        </div>
+        
+        <div class="alerts" id="alertsSection">
+            <h3>⚠️ Driftlarm & Varningar</h3>
+            <div id="alertsList"></div>
+        </div>
+        
+        <div class="footer">
+            Smart Shift AI © 2026 | Intelligent plattform för restaurangstyrning
+        </div>
+    </div>
+
+    <script>
+        function getStaffRecommendation(orders) {
+            let kitchen = Math.max(1, Math.round(orders / 25));
+            let frontCounter = Math.max(1, Math.round(orders / 30));
+            let driveThru = Math.max(1, Math.round(orders / 35));
+            let delivery = Math.max(1, Math.round(orders / 40));
+            return { kitchen, frontCounter, driveThru, delivery, total: kitchen + frontCounter + driveThru + delivery };
+        }
+        
+        function getForecastData(day) {
+            let multiplier = 1;
+            if (day === 'Fri' || day === 'Sat') multiplier = 1.45;
+            if (day === 'Sun') multiplier = 1.2;
+            
+            const data = [];
+            for (let hour = 6; hour <= 23; hour++) {
+                let baseOrders = 40;
+                if (hour >= 11 && hour <= 14) baseOrders = 95;
+                else if (hour >= 17 && hour <= 20) baseOrders = 85;
+                else if (hour >= 8 && hour <= 10) baseOrders = 55;
+                else if (hour >= 21) baseOrders = 35;
+                
+                let orders = Math.round(baseOrders * multiplier * (0.85 + Math.random() * 0.3));
+                let staff = getStaffRecommendation(orders);
+                let isPeak = orders > 80;
+                data.push({ hour, orders, staff, isPeak });
+            }
+            return data;
+        }
+        
+        let currentDay = 'Mon';
+        let forecastData = getForecastData(currentDay);
+        
+        function updateDashboard() {
+            forecastData = getForecastData(currentDay);
+            
+            let totalOrders = forecastData.reduce((sum, h) => sum + h.orders, 0);
+            let totalStaff = forecastData.reduce((sum, h) => sum + h.staff.total, 0);
+            let peakHoursList = forecastData.filter(h => h.isPeak).map(h => h.hour);
+            let avgOrders = totalOrders / forecastData.length;
+            let efficiency = Math.min(100, Math.round((avgOrders / 70) * 100));
+            
+            document.getElementById('totalOrders').innerHTML = totalOrders.toLocaleString();
+            document.getElementById('totalStaff').innerHTML = totalStaff;
+            document.getElementById('peakHours').innerHTML = peakHoursList.length ? peakHoursList.join(', ') + ':00' : 'Inga';
+            document.getElementById('efficiency').innerHTML = efficiency;
+            
+            let tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            forecastData.forEach(h => {
+                let row = tableBody.insertRow();
+                row.insertCell(0).innerHTML = `${h.hour}:00`;
+                row.insertCell(1).innerHTML = `${h.orders} st`;
+                row.insertCell(2).innerHTML = `${h.staff.total} st`;
+                row.insertCell(3).innerHTML = h.isPeak ? '<span class="peak-badge">🔴 RUSNING</span>' : '🟢 Normal';
+            });
+            
+            let peakHours = forecastData.filter(h => h.isPeak).map(h => h.hour);
+            let aiMessage = '';
+            if (peakHours.length > 0) {
+                aiMessage = `📊 Prognos för ${getDayName(currentDay)}: Förväntad rusning klockan ${peakHours.join(', ')}:00. Rekommenderar att du schemalägger ${Math.ceil(totalStaff / forecastData.length)} medarbetare per timme. Kök: ${forecastData[0].staff.kitchen}, Front: ${forecastData[0].staff.frontCounter}, Drive-Thru: ${forecastData[0].staff.driveThru}. Öka beredskapen 30 min före rusning för bästa kundupplevelse.`;
+            } else {
+                aiMessage = `📊 Prognos för ${getDayName(currentDay)}: Inga kraftiga rusningstider förväntas. Rekommenderar normal bemanning med ${Math.ceil(totalStaff / forecastData.length)} medarbetare per timme. Använd lugna perioder för utbildning och förberedelser inför nästa skift.`;
+            }
+            document.getElementById('aiMessage').innerHTML = aiMessage;
+            
+            let alertsHtml = '';
+            let rushHours = forecastData.filter(h => h.isPeak);
+            if (rushHours.length > 0) {
+                alertsHtml += `<div class="alert-item warning">⚠️ RUSNINGSVARNING! Förväntad hög belastning klockan ${rushHours.map(h => h.hour + ':00').join(', ')}. Planera för extra personal!</div>`;
+            }
+            let lowStaffHours = forecastData.filter(h => h.staff.total < 3 && h.orders > 50);
+            if (lowStaffHours.length > 0) {
+                alertsHtml += `<div class="alert-item">⚠️ Personalbrist riskeras klockan ${lowStaffHours.map(h => h.hour + ':00').join(', ')}. Öka bemanningen!</div>`;
+            }
+            if (alertsHtml === '') {
+                alertsHtml = '<div class="alert-item">✅ Inga aktiva larm just nu. Bra planerat!</div>';
+            }
+            document.getElementById('alertsList').innerHTML = alertsHtml;
+        }
+        
+        function getDayName(day) {
+            const names = { 'Mon': 'måndag', 'Tue': 'tisdag', 'Wed': 'onsdag', 'Thu': 'torsdag', 'Fri': 'fredag', 'Sat': 'lördag', 'Sun': 'söndag' };
+            return names[day];
+        }
+        
+        document.querySelectorAll('.day-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentDay = this.getAttribute('data-day');
+                updateDashboard();
+            });
+        });
+        
+        updateDashboard();
+    </script>
+</body>
+</html>
