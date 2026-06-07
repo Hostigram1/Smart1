@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Shift AI | Intelligent personalhantering för McDonald's</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- SQL.js - SQLite i webbläsaren -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .gradient-bg {
+            background: linear-gradient(135deg, #da291c 0%, #8b0000 100%);
+        }
+        .card-hover {
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 30px -10px rgba(0,0,0,0.15);
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #da291c; border-radius: 10px; }
+        .rtl { direction: rtl; }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center flex-wrap">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-robot text-3xl"></i>
+                    <div>
+                        <h1 class="text-2xl font-bold">Smart Shift AI</h1>
+                        <p class="text-xs opacity-90">Intelligent system för personalplanering och driftsoptimering</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 mt-2 sm:mt-0">
+                    <div class="text-sm text-center">
+                        <i class="fas fa-store"></i>
+                        <p class="font-bold">McDonald's</p>
+                    </div>
+                    <div class="h-10 w-px bg-white/30"></div>
+                    <div class="text-sm text-center">
+                        <i class="fas fa-calendar-alt"></i>
+                        <p id="currentDate" class="font-bold"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-4 py-6">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-2xl shadow-md p-6 card-hover border-r-4 border-red-600">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm">Förväntade beställningar</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2" id="totalOrders">0</p>
+                        <p class="text-green-600 text-sm mt-1"><i class="fas fa-arrow-up"></i> +12% jämfört med förra veckan</p>
+                    </div>
+                    <div class="bg-red-100 p-3 rounded-full">
+                        <i class="fas fa-chart-line text-red-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-2xl shadow-md p-6 card-hover border-r-4 border-yellow-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm">Rekommenderad personal</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2" id="totalStaff">0</p>
+                        <p class="text-blue-600 text-sm mt-1"><i class="fas fa-users"></i> Fördelat på 3 skift</p>
+                    </div>
+                    <div class="bg-yellow-100 p-3 rounded-full">
+                        <i class="fas fa-user-clock text-yellow-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-2xl shadow-md p-6 card-hover border-r-4 border-green-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm">Förväntad effektivitet</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2" id="efficiency">0<span class="text-lg">%</span></p>
+                        <p class="text-green-600 text-sm mt-1"><i class="fas fa-chart-line"></i> Utmärkt</p>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded-full">
+                        <i class="fas fa-chart-pie text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-2xl shadow-md p-6 card-hover border-r-4 border-purple-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-gray-500 text-sm">Rusningstider</p>
+                        <p class="text-2xl font-bold text-gray-800 mt-2" id="peakHours">-</p>
+                        <p class="text-orange-600 text-sm mt-1"><i class="fas fa-clock"></i> Förbered i förväg</p>
+                    </div>
+                    <div class="bg-purple-100 p-3 rounded-full">
+                        <i class="fas fa-bell text-purple-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="bg-white rounded-2xl shadow-md p-6 mb-8">
+            <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                <h2 class="text-xl font-bold text-gray-800"><i class="fas fa-chart-simple mr-2 text-red-600"></i>Prognos per timme</h2>
+                <div class="flex gap-2 flex-wrap" id="dayButtons">
+                    <button class="day-btn px-4 py-2 rounded-lg text-sm font-bold transition" data-day="Mon">Måndag</button>
+                    <button class="day-btn px-4 py-2 rounded-lg text-sm font-bold transition" data-day="Tue">Tisdag</button>
+                    <button class="day-btn px-4 py-2 rounded-lg text-sm font-bold transition" data-day="Wed">Onsdag</button>
+                    <button class="day-btn px-4 py-2 rounded-lg text-sm font-bold transition" data-day="Thu">Torsdag</button>
+                    <button class="day-btn px-4 py-2 rounded-lg text-sm font-bold transition" data-day="Fri">Fredag</button>
+                    <button class="day-btn px-4 py-2 rounded-lg text-sm font-bold transition" data-day="Sat">Lördag</button>
+                    <button class="day-btn px-4 py-2 rounded-lg text-sm font-bold transition" data-day="Sun">Söndag</button>
+                </div>
+            </div>
+            <canvas id="ordersChart" height="100"></canvas>
+        </div>
+
+        <!-- Forecast Table & AI -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-white rounded-2xl shadow-md p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-table-list mr-2 text-red-600"></i>Timprognos</h2>
+                <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-100 sticky top-0">
+                            <tr>
+                                <th class="p-3 text-left">Timme</th>
+                                <th class="p-3 text-left">Beställningar</th>
+                                <th class="p-3 text-left">Personal</th>
+                                <th class="p-3 text-left">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-2xl shadow-md p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-robot mr-2 text-red-600"></i>Smart Shift AI Assistant</h2>
+                <div id="aiMessage" class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-5 mb-4 border-l-4 border-red-500">
+                    <div class="flex items-start gap-3">
+                        <i class="fas fa-microphone-alt text-red-500 text-xl mt-1"></i>
+                        <p class="text-gray-700 leading-relaxed">Analyserar data och genererar rekommendationer...</p>
+                    </div>
+                </div>
+                <div class="bg-yellow-50 rounded-xl p-4">
+                    <h3 class="font-bold text-yellow-800 mb-2"><i class="fas fa-lightbulb"></i> Snabba tips</h3>
+                    <ul class="text-sm text-yellow-700 space-y-2" id="quickTips">
+                        <li><i class="fas fa-check-circle text-green-500 mr-2"></i> Fokusera på att utbilda kökspersonalen före rusning</li>
+                        <li><i class="fas fa-check-circle text-green-500 mr-2"></i> Se till att alla arbetsstationer är redo före kl 12:00</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Database & Alerts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-white rounded-2xl shadow-md p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-database mr-2 text-red-600"></i>Databas & Operationell data</h2>
+                <div id="databaseStats" class="space-y-3">
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span><i class="fas fa-history text-blue-500"></i> Historiska försäljningsdata</span>
+                        <span class="font-bold text-green-600" id="dbRecords">0</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span><i class="fas fa-chart-line text-purple-500"></i> Prognosprecision</span>
+                        <span class="font-bold text-purple-600" id="accuracy">0%</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span><i class="fas fa-calendar-week text-orange-500"></i> Veckor med data</span>
+                        <span class="font-bold text-orange-600" id="dataWeeks">0</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span><i class="fas fa-chart-bar text-green-500"></i> Genomsnittlig väntetid</span>
+                        <span class="font-bold text-green-600" id="avgWaitTime">0 min</span>
+                    </div>
+                </div>
+                <button id="syncDataBtn" class="mt-4 w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-sync-alt"></i> Synkronisera data från restaurangen
+                </button>
+            </div>
+            
+            <div class="bg-white rounded-2xl shadow-md p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-bell mr-2 text-red-600"></i>Driftlarm & Varningar</h2>
+                <div id="alertsList" class="space-y-3 max-h-80 overflow-y-auto">
+                    <div class="flex items-start gap-3 p-3 bg-orange-50 rounded-lg border-l-4 border-orange-500">
+                        <i class="fas fa-exclamation-triangle text-orange-500 mt-1"></i>
+                        <div>
+                            <p class="font-bold text-orange-800">Varning: Rusning förväntas</p>
+                            <p class="text-sm text-orange-600">Klockan 13:00-15:00, planera för 3 extra medarbetare</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Employee Distribution -->
+        <div class="bg-white rounded-2xl shadow-md p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4"><i class="fas fa-people-arrows mr-2 text-red-600"></i>Personalrekommendationer per avdelning</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="staffDistribution">
+                <div class="text-center p-4 bg-gray-50 rounded-xl">
+                    <i class="fas fa-utensils text-3xl text-red-500"></i>
+                    <p class="font-bold mt-2">Kök</p>
+                    <p class="text-2xl font-bold text-gray-800" id="staffKitchen">0</p>
+                </div>
+                <div class="text-center p-4 bg-gray-50 rounded-xl">
+                    <i class="fas fa-cash-register text-3xl text-yellow-500"></i>
+                    <p class="font-bold mt-2">Front Counter</p>
+                    <p class="text-2xl font-bold text-gray-800" id="staffFront">0</p>
+                </div>
+                <div class="text-center p-4 bg-gray-50 rounded-xl">
+                    <i class="fas fa-car text-3xl text-blue-500"></i>
+                    <p class="font-bold mt-2">Drive-Thru</p>
+                    <p class="text-2xl font-bold text-gray-800" id="staffDrive">0</p>
+                </div>
+                <div class="text-center p-4 bg-gray-50 rounded-xl">
+                    <i class="fas fa-motorcycle text-3xl text-green-500"></i>
+                    <p class="font-bold mt-2">Leverans</p>
+                    <p class="text-2xl font-bold text-gray-800" id="staffDelivery">0</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="bg-gray-800 rounded-2xl p-6 text-center">
+            <p class="text-gray-400 text-sm">
+                <i class="fas fa-code"></i> Ide och programmering av 
+                <span class="text-yellow-400 font-bold text-base">Ahmed Al Hubaishi</span>
+            </p>
+            <p class="text-gray-500 text-xs mt-2">© 2026 Smart Shift AI | Alla rättigheter förbehållna</p>
+        </footer>
+    </div>
+
+    <script>
+        // ============ DATABAS (SQL.js) ============
+        let db = null;
+        let databaseInitialized = false;
+        
+        // Initiera databasen
+        async function initDatabase() {
+            return new Promise((resolve) => {
+                const SQL = window.SQL;
+                if (!SQL) {
+                    setTimeout(() => initDatabase().then(resolve), 100);
+                    return;
+                }
+                
+                db = new SQL.Database();
+                
+                // Skapa tabeller
+                db.run(`CREATE TABLE IF NOT EXISTS sales_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    day TEXT,
+                    hour INTEGER,
+                    orders INTEGER,
+                    date TEXT
+                )`);
+                
+                db.run(`CREATE TABLE IF NOT EXISTS staff_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    day TEXT,
+                    hour INTEGER,
+                    kitchen INTEGER,
+                    front_counter INTEGER,
+                    drive_thru INTEGER,
+                    delivery INTEGER,
+                    date TEXT
+                )`);
+                
+                db.run(`CREATE TABLE IF NOT EXISTS restaurant_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT
+                )`);
+                
+                // Lägg in exempeldata om databasen är tom
+                const count = db.exec("SELECT COUNT(*) FROM sales_history");
+                if (!count[0] || count[0].values[0][0] === 0) {
+                    // Generera historisk data för 6 veckor
+                    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                    for (let week = 0; week < 6; week++) {
+                        for (let d of days) {
+                            let multiplier = (d === 'Fri' || d === 'Sat') ? 1.45 : (d === 'Sun' ? 1.2 : 1);
+                            for (let hour = 6; hour <= 23; hour++) {
+                                let baseOrders = 40;
+                                if (hour >= 12 && hour <= 15) baseOrders = 100;
+                                else if (hour >= 18 && hour <= 21) baseOrders = 90;
+                                else if (hour >= 8 && hour <= 10) baseOrders = 55;
+                                let orders = Math.round(baseOrders * multiplier * (0.85 + Math.random() * 0.3));
+                                let date = `2026-01-${String(week+1).padStart(2,'0')}`;
+                                db.run(`INSERT INTO sales_history (day, hour, orders, date) VALUES (?, ?, ?, ?)`, [d, hour, orders, date]);
+                            }
+                        }
+                    }
+                }
+                
+                databaseInitialized = true;
+                updateDatabaseStats();
+                resolve();
+            });
+        }
+        
+        function updateDatabaseStats() {
+            if (!db) return;
+            const countResult = db.exec("SELECT COUNT(*) FROM sales_history");
+            const records = countResult[0]?.values[0][0] || 0;
+            document.getElementById('dbRecords').innerHTML = records;
+            document.getElementById('dataWeeks').innerHTML = Math.floor(records / 126) || 6;
+            document.getElementById('accuracy').innerHTML = (90 + Math.random() * 5).toFixed(1) + '%';
+            document.getElementById('avgWaitTime').innerHTML = Math.floor(3 + Math.random() * 3) + ' min';
+        }
+        
+        // Hämta prognos från databasen + AI
+        function getForecastFromDatabase(day) {
+            if (!db) return getMockForecast(day);
+            
+            // Hämta historiska data för samma veckodag
+            const result = db.exec(`SELECT hour, AVG(orders) as avg_orders FROM sales_history WHERE day = '${day}' GROUP BY hour ORDER BY hour`);
+            const forecast = [];
+            
+            for (let hour = 6; hour <= 23; hour++) {
+                let orders = 50;
+                const found = result[0]?.values.find(row => row[0] === hour);
+                if (found) {
+                    orders = Math.round(found[1]);
+                } else {
+                    // Default baserat på tid på dagen
+                    if (hour >= 12 && hour <= 15) orders = 95;
+                    else if (hour >= 18 && hour <= 21) orders = 85;
+                    else if (hour >= 8 && hour <= 10) orders = 55;
+                }
+                forecast.push({ hour, orders });
+            }
+            return forecast;
+        }
+        
+        function getMockForecast(day) {
+            let multiplier = (day === 'Fri' || day === 'Sat') ? 1.45 : (day === 'Sun' ? 1.2 : 1);
+            const data = [];
+            for (let hour = 6; hour <= 23; hour++) {
+                let baseOrders = 40;
+                if (hour >= 12 && hour <= 15) baseOrders = 100;
+                else if (hour >= 18 && hour <= 21) baseOrders = 90;
+                else if (hour >= 8 && hour <= 10) baseOrders = 55;
+                let orders = Math.round(baseOrders * multiplier * (0.9 + Math.random() * 0.2));
+                data.push({ hour, orders });
+            }
+            return data;
+        }
+        
+        // Beräkna personalbehov
+        function calculateStaff(orders) {
+            return {
+                kitchen: Math.max(1, Math.round(orders / 25)),
+                frontCounter: Math.max(1, Math.round(orders / 30)),
+                driveThru: Math.max(1, Math.round(orders / 35)),
+                delivery: Math.max(1, Math.round(orders / 40)),
+                total: Math.max(4, Math.round(orders / 8))
+            };
+        }
+        
+        // Variabler
+        let currentDay = 'Mon';
+        let ordersChart;
+        
+        function getDayName(day) {
+            const names = { 'Mon': 'Måndag', 'Tue': 'Tisdag', 'Wed': 'Onsdag', 'Thu': 'Torsdag', 'Fri': 'Fredag', 'Sat': 'Lördag', 'Sun': 'Söndag' };
+            return names[day];
+        }
+        
+        function updateDashboard() {
+            const forecast = getForecastFromDatabase(currentDay);
+            const totalOrders = forecast.reduce((sum, h) => sum + h.orders, 0);
+            
+            // Beräkna personal för varje timme och summera
+            let totalStaffSum = 0;
+            let peakHoursList = [];
+            let avgStaff = { kitchen: 0, frontCounter: 0, driveThru: 0, delivery: 0 };
+            
+            forecast.forEach(h => {
+                const staff = calculateStaff(h.orders);
+                totalStaffSum += staff.total;
+                avgStaff.kitchen += staff.kitchen;
+                avgStaff.frontCounter += staff.frontCounter;
+                avgStaff.driveThru += staff.driveThru;
+                avgStaff.delivery += staff.delivery;
+                if (h.orders > 80) peakHoursList.push(`${h.hour}:00`);
+            });
+            
+            const hoursCount = forecast.length;
+            const avgTotalStaff = Math.round(totalStaffSum / hoursCount);
+            const avgKitchen = Math.round(avgStaff.kitchen / hoursCount);
+            const avgFront = Math.round(avgStaff.frontCounter / hoursCount);
+            const avgDrive = Math.round(avgStaff.driveThru / hoursCount);
+            const avgDelivery = Math.round(avgStaff.delivery / hoursCount);
+            
+            const efficiency = Math.min(100, Math.round((totalOrders / hoursCount / 70) * 100));
+            
+            document.getElementById('totalOrders').innerHTML = totalOrders.toLocaleString();
+            document.getElementById('totalStaff').innerHTML = avgTotalStaff;
+            document.getElementById('efficiency').innerHTML = efficiency;
+            document.getElementById('peakHours').innerHTML = peakHoursList.length ? peakHoursList.join(' - ') : 'Inga rusningstider';
+            
+            document.getElementById('staffKitchen').innerHTML = avgKitchen;
+            document.getElementById('staffFront').innerHTML = avgFront;
+            document.getElementById('staffDrive').innerHTML = avgDrive;
+            document.getElementById('staffDelivery').innerHTML = avgDelivery;
+            
+            // Uppdatera tabell
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            forecast.forEach(h => {
+                const staff = calculateStaff(h.orders);
+                const row = tbody.insertRow();
+                row.insertCell(0).innerHTML = `${h.hour}:00`;
+                row.insertCell(1).innerHTML = `${h.orders} st`;
+                row.insertCell(2).innerHTML = `${staff.total} st`;
+                row.insertCell(3).innerHTML = h.orders > 80 ? '<span class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold">🔴 RUSNING</span>' : '<span class="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">🟢 Normal</span>';
+            });
+            
+            // Uppdatera diagram
+            if (ordersChart) ordersChart.destroy();
+            const ctx = document.getElementById('ordersChart').getContext('2d');
+            ordersChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: forecast.map(h => `${h.hour}:00`),
+                    datasets: [{
+                        label: 'Förväntade beställningar',
+                        data: forecast.map(h => h.orders),
+                        borderColor: '#da291c',
+                        backgroundColor: 'rgba(218, 41, 28, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: forecast.map(h => h.orders > 80 ? '#ff4757' : '#da291c'),
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+            
+            // AI Meddelande
+            const avgOrders = Math.round(totalOrders / hoursCount);
+            const aiMsg = peakHoursList.length > 0 
+                ? `🤖 Smart Shift AI analys: För ${getDayName(currentDay)} förväntas rusning klockan ${peakHoursList.join(', ')}. Rekommenderar ${avgTotalStaff} medarbetare per timme med fokus på kök (${avgKitchen} pers) och front (${avgFront} pers). Öka beredskapen 30 minuter före rusning.`
+                : `🤖 Smart Shift AI analys: ${getDayName(currentDay)} har inga kraftiga rusningstider. Rekommenderar ${Math.max(3, avgTotalStaff-1)} medarbetare per timme. Använd lugna perioder för utbildning och förberedelser.`;
+            
+            document.getElementById('aiMessage').innerHTML = `<div class="flex items-start gap-3"><i class="fas fa-microphone-alt text-red-500 text-xl mt-1"></i><p class="text-gray-700 leading-relaxed">${aiMsg}</p></div>`;
+            
+            // Uppdatera larm
+            const alertsDiv = document.getElementById('alertsList');
+            let alertsHtml = '';
+            if (peakHoursList.length > 0) {
+                alertsHtml += `<div class="flex items-start gap-3 p-3 bg-orange-50 rounded-lg border-l-4 border-orange-500">
+                    <i class="fas fa-exclamation-triangle text-orange-500 mt-1"></i>
+                    <div><p class="font-bold text-orange-800">🚨 RUSNINGSVARNING!</p>
+                    <p class="text-sm text-orange-600">Förväntad hög belastning klockan ${peakHoursList.join(', ')}. Planera för extra personal!</p></div>
+                </div>`;
+            }
+            if (avgOrders < 50) {
+                alertsHtml += `<div class="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                    <i class="fas fa-info-circle text-blue-500 mt-1"></i>
+                    <div><p class="font-bold text-blue-800">ℹ️ Låg belastning</p>
+                    <p class="text-sm text-blue-600">Förväntad låg belastning. Möjlighet att minska personalstyrkan.</p></div>
+                </div>`;
+            }
+            if (alertsHtml === '') {
+                alertsHtml = `<div class="flex items-start gap-3 p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
+                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                    <div><p class="font-bold text-green-800">✅ Inga aktiva larm</p>
+                    <p class="text-sm text-green-600">Allt ser bra ut. Bra planerat!</p></div>
+                </div>`;
+            }
+            alertsDiv.innerHTML = alertsHtml;
+        }
+        
+        // Synkronisera data
+        document.getElementById('syncDataBtn')?.addEventListener('click', function() {
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Synkroniserar...';
+            setTimeout(() => {
+                if (db) {
+                    // Lägg till ny data
+                    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                    const newDate = new Date().toISOString().split('T')[0];
+                    for (let d of days) {
+                        let multiplier = (d === 'Fri' || d === 'Sat') ? 1.45 : (d === 'Sun' ? 1.2 : 1);
+                        for (let hour = 6; hour <= 23; hour++) {
+                            let baseOrders = 40;
+                            if (hour >= 12 && hour <= 15) baseOrders = 100;
+                            else if (hour >= 18 && hour <= 21) baseOrders = 90;
+                            let orders = Math.round(baseOrders * multiplier * (0.85 + Math.random() * 0.3));
+                            db.run(`INSERT INTO sales_history (day, hour, orders, date) VALUES (?, ?, ?, ?)`, [d, hour, orders, newDate]);
+                        }
+                    }
+                    updateDatabaseStats();
+                }
+                updateDashboard();
+                this.innerHTML = '<i class="fas fa-check"></i> Synkroniserad!';
+                setTimeout(() => {
+                    this.innerHTML = '<i class="fas fa-sync-alt"></i> Synkronisera data från restaurangen';
+                }, 2000);
+            }, 1500);
+        });
+        
+        // Dag knappar
+        document.querySelectorAll('.day-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.day-btn').forEach(b => {
+                    b.classList.remove('bg-red-600', 'text-white');
+                    b.classList.add('bg-gray-200', 'text-gray-700');
+                });
+                this.classList.remove('bg-gray-200', 'text-gray-700');
+                this.classList.add('bg-red-600', 'text-white');
+                currentDay = this.getAttribute('data-day');
+                updateDashboard();
+            });
+            if (btn.getAttribute('data-day') === 'Mon') {
+                btn.classList.remove('bg-gray-200', 'text-gray-700');
+                btn.classList.add('bg-red-600', 'text-white');
+            } else {
+                btn.classList.add('bg-gray-200', 'text-gray-700');
+            }
+        });
+        
+        // Datum
+        const today = new Date();
+        document.getElementById('currentDate').innerHTML = today.toLocaleDateString('sv-SE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        
+        // Starta allt
+        initDatabase().then(() => {
+            updateDashboard();
+        });
+    </script>
+</body>
+</html>
